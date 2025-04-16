@@ -14,7 +14,13 @@ type Category = {
   name: string;
 };
 
-export default function EditPoll({ params }: { params: { id: string } }) {
+type PageProps = {
+  params: {
+    id: string;
+  };
+};
+
+export default function EditPoll({ params }: PageProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,9 +40,8 @@ export default function EditPoll({ params }: { params: { id: string } }) {
   useEffect(() => {
     async function fetchPoll() {
       try {
-        const resolvedId = await params.id;
-        setPollId(resolvedId);
-        const response = await fetch(`/api/polls/${resolvedId}`);
+        setPollId(params.id);
+        const response = await fetch(`/api/polls/${params.id}`);
         if (!response.ok) {
           throw new Error("Failed to fetch poll");
         }
