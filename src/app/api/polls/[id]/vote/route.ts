@@ -5,11 +5,11 @@ import { verifyToken } from "@/lib/auth";
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { optionId } = await request.json();
-    const resolvedId = await params.id;
+    const resolvedParams = await params;
 
     if (!optionId) {
       return NextResponse.json(
@@ -20,7 +20,7 @@ export async function POST(
 
     // Get the poll to check if it's still active
     const poll = await prisma.poll.findUnique({
-      where: { id: resolvedId },
+      where: { id: resolvedParams.id },
     });
 
     if (!poll) {

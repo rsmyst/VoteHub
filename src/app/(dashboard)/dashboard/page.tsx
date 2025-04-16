@@ -10,10 +10,19 @@ async function getUserPolls(userId: string): Promise<PollWithRelations[]> {
       creatorId: userId,
     },
     include: {
-      options: true,
+      options: {
+        include: {
+          votes: true,
+        },
+      },
       categories: {
         include: {
           category: true,
+        },
+      },
+      creator: {
+        select: {
+          name: true,
         },
       },
     },

@@ -4,13 +4,12 @@ import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const p = await params;
-    const resolvedId = await p.id;
+    const resolvedParams = await params;
     const poll = await prisma.poll.findUnique({
-      where: { id: resolvedId },
+      where: { id: resolvedParams.id },
       include: {
         options: true,
         categories: {
@@ -50,7 +49,7 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -61,9 +60,9 @@ export async function PUT(
       );
     }
 
-    const resolvedId = await params.id;
+    const resolvedParams = await params;
     const poll = await prisma.poll.findUnique({
-      where: { id: resolvedId },
+      where: { id: resolvedParams.id },
       include: {
         creator: {
           select: {
@@ -99,7 +98,7 @@ export async function PUT(
     const updatedPoll = await prisma.$transaction(async (tx) => {
       // Update poll
       const poll = await tx.poll.update({
-        where: { id: resolvedId },
+        where: { id: resolvedParams.id },
         data: {
           title,
           description,
@@ -111,24 +110,24 @@ export async function PUT(
 
       // Delete existing options and create new ones
       await tx.option.deleteMany({
-        where: { pollId: resolvedId },
+        where: { pollId: resolvedParams.id },
       });
 
       await tx.option.createMany({
         data: options.map((text: string) => ({
-          pollId: resolvedId,
+          pollId: resolvedParams.id,
           text,
         })),
       });
 
       // Update categories
       await tx.pollCategory.deleteMany({
-        where: { pollId: resolvedId },
+        where: { pollId: resolvedParams.id },
       });
 
       await tx.pollCategory.createMany({
         data: categories.map((categoryId: string) => ({
-          pollId: resolvedId,
+          pollId: resolvedParams.id,
           categoryId,
         })),
       });

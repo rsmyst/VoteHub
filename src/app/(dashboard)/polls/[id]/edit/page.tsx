@@ -14,10 +14,9 @@ type Category = {
   name: string;
 };
 
+// Define the correct type for Next.js 15.3.0
 type PageProps = {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
 };
 
 export default function EditPoll({ params }: PageProps) {
@@ -38,14 +37,24 @@ export default function EditPoll({ params }: PageProps) {
   );
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchPoll() {
       try {
-        setPollId(params.id);
-        const response = await fetch(`/api/polls/${params.id}`);
+        // Await the params to get the id
+        const resolvedParams = await params;
+        if (!isMounted) return;
+
+        const id = resolvedParams.id;
+        setPollId(id);
+
+        const response = await fetch(`/api/polls/${id}`);
         if (!response.ok) {
           throw new Error("Failed to fetch poll");
         }
         const poll = await response.json();
+
+        if (!isMounted) return;
 
         setTitle(poll.title);
         setDescription(poll.description || "");
@@ -64,17 +73,28 @@ export default function EditPoll({ params }: PageProps) {
         const catResponse = await fetch("/api/categories");
         if (catResponse.ok) {
           const cats = await catResponse.json();
-          setAvailableCategories(cats);
+          if (isMounted) {
+            setAvailableCategories(cats);
+          }
         }
 
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       } catch (err) {
-        setError("Failed to load poll");
-        setLoading(false);
+        if (isMounted) {
+          setError("Failed to load poll");
+          setLoading(false);
+        }
       }
     }
+
     fetchPoll();
-  }, [params.id]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [params]);
 
   const addOption = () => {
     setOptions([...options, { id: Date.now().toString(), text: "" }]);

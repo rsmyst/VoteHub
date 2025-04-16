@@ -4,10 +4,14 @@ import { getCurrentUser } from "@/lib/auth";
 import PollVote from "@/components/PollVote";
 import PollResults from "@/components/PollResults";
 
-async function getPoll(id: Promise<string> | string) {
-  const resolvedId = await id;
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
+
+async function getPoll(params: Promise<{ id: string }>) {
+  const resolvedParams = await params;
   const poll = await prisma.poll.findUnique({
-    where: { id: resolvedId },
+    where: { id: resolvedParams.id },
     include: {
       options: {
         include: {
@@ -34,11 +38,8 @@ async function getPoll(id: Promise<string> | string) {
   return poll;
 }
 
-export default async function PollPage({ params }: { params: { id: string } }) {
-  const [poll, user] = await Promise.all([
-    getPoll(params.id),
-    getCurrentUser(),
-  ]);
+export default async function PollPage({ params }: PageProps) {
+  const [poll, user] = await Promise.all([getPoll(params), getCurrentUser()]);
 
   // Check if user has already voted
   let hasVoted = false;

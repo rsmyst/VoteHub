@@ -6,7 +6,8 @@ import { nanoid } from "nanoid";
 
 export async function POST(request: Request) {
   try {
-    const token = cookies().get("token")?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
 
     if (!token) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
