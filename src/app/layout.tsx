@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata = {
   title: "VoteHub - Anonymous Polling Platform",
   description: "Create and participate in anonymous polls with VoteHub",
+  icons: {
+    icon: "/poll.png",
+  },
 };
 
 export default function RootLayout({
