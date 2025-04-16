@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import type { PollWithRelations } from "@/types/poll";
 import PollAccessForm from "@/components/PollAccessForm";
 
+// Disable caching so new polls appear immediately
+export const revalidate = 0;
+
 async function getFeaturedPolls(): Promise<PollWithRelations[]> {
   return await prisma.poll.findMany({
     where: {
