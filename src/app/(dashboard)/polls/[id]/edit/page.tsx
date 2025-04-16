@@ -19,6 +19,7 @@ export default function EditPoll({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [pollId, setPollId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(true);
@@ -34,6 +35,7 @@ export default function EditPoll({ params }: { params: { id: string } }) {
     async function fetchPoll() {
       try {
         const resolvedId = await params.id;
+        setPollId(resolvedId);
         const response = await fetch(`/api/polls/${resolvedId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch poll");
@@ -99,7 +101,7 @@ export default function EditPoll({ params }: { params: { id: string } }) {
     }
 
     try {
-      const response = await fetch(`/api/polls/${params.id}`, {
+      const response = await fetch(`/api/polls/${pollId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -119,7 +121,7 @@ export default function EditPoll({ params }: { params: { id: string } }) {
         throw new Error("Failed to update poll");
       }
 
-      router.push(`/polls/${params.id}`);
+      router.push(`/polls/${pollId}`);
     } catch (err) {
       setError("Failed to update poll");
       setSaving(false);

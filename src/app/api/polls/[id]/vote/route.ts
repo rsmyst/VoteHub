@@ -9,6 +9,7 @@ export async function POST(
 ) {
   try {
     const { optionId } = await request.json();
+    const resolvedId = await params.id;
 
     if (!optionId) {
       return NextResponse.json(
@@ -19,7 +20,7 @@ export async function POST(
 
     // Get the poll to check if it's still active
     const poll = await prisma.poll.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedId },
     });
 
     if (!poll) {
@@ -40,7 +41,7 @@ export async function POST(
     }
 
     // Handle authenticated vs anonymous votes
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     let userId: string | null = null;
     let sessionId: string | null = null;
@@ -66,6 +67,14 @@ export async function POST(
         }
       }
     } else {
+      // For anonymous users, check if the poll is public
+      if (!poll.isPublic) {
+        return NextResponse.json(
+          { message: "You must be logged in to vote on private polls" },
+          { status: 403 }
+        );
+      }
+
       // Handle anonymous vote
       const existingSessionId = cookieStore.get("session")?.value;
 
@@ -97,18 +106,55 @@ export async function POST(
       }
     }
 
-    // Create the vote
-    const vote = await prisma.vote.create({
-      data: {
-        pollId: poll.id,
-        optionId,
-        userId,
-        sessionId,
-      },
+    // Create the vote and add to poll participants in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the vote
+      const vote = await tx.vote.create({
+        data: {
+          pollId: poll.id,
+          optionId,
+          userId,
+          sessionId,
+        },
+      });
+
+      // Add to poll participants if not already there
+      if (userId) {
+        // For authenticated users, check if they're already a participant
+        const existingParticipant = await tx.pollParticipant.findFirst({
+          where: {
+            pollId: poll.id,
+            email: userId, // Using userId as email for now
+          },
+        });
+
+        if (!existingParticipant) {
+          await tx.pollParticipant.create({
+            data: {
+              pollId: poll.id,
+              email: userId, // Using userId as email for now
+              status: "ACCEPTED",
+              respondedAt: new Date(),
+            },
+          });
+        }
+      } else if (sessionId) {
+        // For anonymous users, create a participant with a placeholder email
+        await tx.pollParticipant.create({
+          data: {
+            pollId: poll.id,
+            email: `anonymous-${sessionId.substring(0, 8)}@anonymous.com`,
+            status: "ACCEPTED",
+            respondedAt: new Date(),
+          },
+        });
+      }
+
+      return vote;
     });
 
     // If this was an anonymous vote with a new session, set the session cookie
-    const response = NextResponse.json({ vote });
+    const response = NextResponse.json({ vote: result });
 
     if (sessionId && !cookieStore.get("session")) {
       response.cookies.set("session", sessionId, {

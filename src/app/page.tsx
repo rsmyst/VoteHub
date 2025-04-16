@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { PollWithRelations } from "@/types/poll";
+import PollAccessForm from "@/components/PollAccessForm";
 
 async function getFeaturedPolls(): Promise<PollWithRelations[]> {
   return await prisma.poll.findMany({
@@ -65,23 +66,7 @@ export default async function Home() {
         <h2 className="text-2xl font-semibold mb-4 dark:text-white">
           Access Private Poll
         </h2>
-        <form action="/api/polls/access" method="POST" className="space-y-4">
-          <div>
-            <input
-              type="text"
-              name="code"
-              placeholder="Enter poll code"
-              className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
-          >
-            Access Poll
-          </button>
-        </form>
+        <PollAccessForm />
       </section>
 
       <section>

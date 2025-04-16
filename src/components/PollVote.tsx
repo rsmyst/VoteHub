@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type PollVoteProps = {
@@ -13,6 +13,18 @@ export default function PollVote({ poll, user }: PollVoteProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [showLoginAlert, setShowLoginAlert] = useState(false);
+
+  // Force a hard refresh after successful vote
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
 
   const handleVote = async () => {
     if (!selectedOption) {
@@ -22,30 +34,80 @@ export default function PollVote({ poll, user }: PollVoteProps) {
 
     setLoading(true);
     setError("");
+    setSuccess(false);
+    setShowLoginAlert(false);
 
     try {
-      const response = await fetch("/api/votes", {
+      const response = await fetch(`/api/polls/${poll.id}/vote`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          pollId: poll.id,
           optionId: selectedOption,
-          userId: user?.userId,
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to submit vote");
+        // Check if this is a private poll access error
+        if (response.status === 403 && data.message?.includes("logged in")) {
+          setShowLoginAlert(true);
+          setLoading(false);
+          return;
+        }
+        throw new Error(data.message || "Failed to submit vote");
       }
 
-      router.refresh();
-    } catch (err) {
-      setError("Failed to submit vote");
+      // Show success message
+      setSuccess(true);
+      setLoading(false);
+      
+      // For authenticated users, use router.refresh()
+      if (user) {
+        setTimeout(() => {
+          router.refresh();
+        }, 1500);
+      }
+      // For anonymous users, the useEffect will handle the refresh
+    } catch (err: any) {
+      setError(err.message || "Failed to submit vote");
       setLoading(false);
     }
   };
+
+  if (showLoginAlert) {
+    return (
+      <div className="p-6 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border-2 border-yellow-500 text-center">
+        <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+          Login Required
+        </h3>
+        <p className="text-yellow-700 dark:text-yellow-300 mb-4">
+          Please login to vote on private polls.
+        </p>
+        <button
+          onClick={() => router.push("/login")}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Go to Login
+        </button>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="p-6 bg-green-50 dark:bg-green-900/30 rounded-lg border-2 border-green-500 text-center">
+        <h3 className="text-lg font-medium text-green-800 dark:text-green-200 mb-2">
+          Vote Submitted Successfully!
+        </h3>
+        <p className="text-green-700 dark:text-green-300">
+          Thank you for your vote. Refreshing to show results...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -66,6 +128,7 @@ export default function PollVote({ poll, user }: PollVoteProps) {
               checked={selectedOption === option.id}
               onChange={(e) => setSelectedOption(e.target.value)}
               className="sr-only"
+              disabled={loading}
             />
             <span className="text-gray-900 dark:text-white">{option.text}</span>
           </label>
@@ -76,7 +139,7 @@ export default function PollVote({ poll, user }: PollVoteProps) {
 
       <button
         onClick={handleVote}
-        disabled={loading}
+        disabled={loading || !selectedOption}
         className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
       >
         {loading ? "Submitting..." : "Submit Vote"}

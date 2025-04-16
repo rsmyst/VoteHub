@@ -7,7 +7,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const resolvedId = await params.id;
+    const p = await params;
+    const resolvedId = await p.id;
     const poll = await prisma.poll.findUnique({
       where: { id: resolvedId },
       include: {
@@ -84,8 +85,15 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, description, isPublic, roomCode, options, categories } =
-      body;
+    const {
+      title,
+      description,
+      isPublic,
+      roomCode,
+      options,
+      categories,
+      status,
+    } = body;
 
     // Update poll and its relations in a transaction
     const updatedPoll = await prisma.$transaction(async (tx) => {
@@ -97,6 +105,7 @@ export async function PUT(
           description,
           isPublic,
           roomCode,
+          status,
         },
       });
 
